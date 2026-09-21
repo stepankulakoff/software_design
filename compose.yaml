@@ -1,4 +1,4 @@
-name: currency-homework3
+name: ${COMPOSE_PROJECT_NAME:-currency-homework3}
 
 services:
   zookeeper:
@@ -9,7 +9,7 @@ services:
         metricsProvider.httpPort=7070
         metricsProvider.exportJvmInfo=true
     ports:
-      - "127.0.0.1:22181:2181"
+      - "127.0.0.1:${ZOOKEEPER_PORT:-22181}:2181"
     healthcheck:
       test: ["CMD", "zkServer.sh", "status"]
       interval: 5s
@@ -21,7 +21,7 @@ services:
     environment:
       POSTGRES_DB: pact
       POSTGRES_USER: pact
-      POSTGRES_PASSWORD: pact-local
+      POSTGRES_PASSWORD: ${PACT_PASSWORD:-pact-local}
     volumes:
       - pact-data:/var/lib/postgresql/data
     healthcheck:
@@ -36,15 +36,15 @@ services:
       postgres:
         condition: service_healthy
     ports:
-      - "127.0.0.1:9292:9292"
+      - "127.0.0.1:${BROKER_PORT:-9292}:9292"
     environment:
       PACT_BROKER_DATABASE_ADAPTER: postgres
       PACT_BROKER_DATABASE_HOST: postgres
       PACT_BROKER_DATABASE_NAME: pact
       PACT_BROKER_DATABASE_USERNAME: pact
-      PACT_BROKER_DATABASE_PASSWORD: pact-local
+      PACT_BROKER_DATABASE_PASSWORD: ${PACT_PASSWORD:-pact-local}
       PACT_BROKER_PORT: "9292"
-      PACT_BROKER_BASE_URL: http://localhost:9292
+      PACT_BROKER_BASE_URL: http://localhost:${BROKER_PORT:-9292}
       PACT_DO_NOT_TRACK: "true"
     healthcheck:
       test: ["CMD", "ruby", "-rnet/http", "-e", "exit(Net::HTTP.get_response(URI('http://localhost:9292/diagnostic/status/heartbeat')).is_a?(Net::HTTPSuccess) ? 0 : 1)"]
@@ -53,15 +53,13 @@ services:
       retries: 30
 
   service1:
-    image: eclipse-temurin:21-jre
+    image: homework/rate-provider:${APP_VERSION:?Set APP_VERSION to a built version}
+    stop_grace_period: 90s
     profiles: [apps]
     environment:
       ZOOKEEPER_ADDRESS: zookeeper:2181
       PROVIDER_HOST: service1
-    command: [java, -Xmx256m, -jar, /app/app.jar, --server.port=8080]
-    volumes:
-      - ./rate-provider/target/rate-provider-1.0.0.jar:/app/app.jar:ro
-    ports: ["127.0.0.1:8081:8080"]
+    ports: ["127.0.0.1:${SERVICE1_PORT:-8081}:8080"]
     depends_on:
       zookeeper: {condition: service_healthy}
     healthcheck:
@@ -74,19 +72,18 @@ services:
     extends: service1
     environment:
       PROVIDER_HOST: service2
-    ports: !override ["127.0.0.1:8082:8080"]
+    ports: !override ["127.0.0.1:${SERVICE2_PORT:-8082}:8080"]
 
   client:
     extends: service1
+    image: homework/rate-printer:${APP_VERSION:?Set APP_VERSION to a built version}
     environment:
       CLIENT_ID: rate-printer
-    volumes: !override
-      - ./rate-printer/target/rate-printer-1.0.0.jar:/app/app.jar:ro
-    ports: !override ["127.0.0.1:8083:8080"]
+    ports: !override ["127.0.0.1:${CLIENT_PORT:-8083}:8080"]
 
   prometheus:
     image: prom/prometheus:v3.5.5
-    ports: ["127.0.0.1:9090:9090"]
+    ports: ["127.0.0.1:${PROMETHEUS_PORT:-9090}:9090"]
     volumes:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus-data:/prometheus
@@ -98,10 +95,10 @@ services:
 
   grafana:
     image: grafana/grafana:13.2.2
-    ports: ["127.0.0.1:3000:3000"]
+    ports: ["127.0.0.1:${GRAFANA_PORT:-3000}:3000"]
     environment:
       GF_SECURITY_ADMIN_USER: admin
-      GF_SECURITY_ADMIN_PASSWORD: homework
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-homework}
       GF_USERS_ALLOW_SIGN_UP: "false"
     volumes:
       - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro

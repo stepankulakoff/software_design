@@ -13,6 +13,8 @@ import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import org.springframework.context.event.ContextClosedEvent;
+import org.slf4j.LoggerFactory;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.TimeUnit;
 
@@ -45,6 +47,21 @@ public class ServiceRegistration {
             throw new IllegalStateException("Не удалось зарегистрировать сервер");
         }
         System.out.println("Сервер зарегистрирован: " + address);
+    }
+
+    // ContextClosedEvent приходит до остановки HTTP-сервера.
+    @EventListener(ContextClosedEvent.class)
+    public void unregister() {
+        try {
+            if (registration != null) {
+                registration.close();
+                registration = null;
+                LoggerFactory.getLogger(ServiceRegistration.class).info("Service removed from ZooKeeper; draining requests");
+            }
+        } catch (IOException e) {
+            LoggerFactory.getLogger(ServiceRegistration.class).warn("Cannot remove registration; closing session", e);
+            if (zooKeeper != null) zooKeeper.close();
+        }
     }
 
     @PreDestroy
