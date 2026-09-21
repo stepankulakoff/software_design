@@ -1,33 +1,28 @@
 ```sh
 docker compose up -d --wait
 mvn clean verify
+docker compose --profile apps up -d --wait --force-recreate service1 service2 client
 ```
 
 ```sh
-java -jar rate-provider/target/rate-provider-1.0.0.jar --server.port=8081
+open http://localhost:3000/d/currency-homework
 ```
 
 ```sh
-java -jar rate-provider/target/rate-provider-1.0.0.jar --server.port=8082
-```
-
-```sh
-java -jar rate-printer/target/rate-printer-1.0.0.jar
-```
-
-```sh
-curl -s http://localhost:8081/rpc -H 'Content-Type: application/json' -d '{"jsonrpc":"2.0","method":"getRate","id":1}'
-```
-
-```sh
+curl -u admin:homework http://localhost:3000/api/health
+open http://localhost:9090/targets
 open http://localhost:9292
 ```
 
 ```sh
-mvn -pl rate-printer clean verify
-mvn -pl rate-provider clean verify
+curl -s http://localhost:8081/rpc -H 'Content-Type: application/json' -H 'X-Client-Id: manual' -d '{"jsonrpc":"2.0","method":"getRate","id":1}'
+curl -s http://localhost:8081/actuator/prometheus
 ```
 
 ```sh
-docker compose stop
+docker compose logs -f service1 service2 client
+```
+
+```sh
+docker compose --profile apps stop
 ```
