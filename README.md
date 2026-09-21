@@ -1,18 +1,33 @@
 ```sh
-cd ~/Desktop/homework
-mvn compile dependency:copy-dependencies
-docker start homework-zookeeper
+docker compose up -d --wait
+mvn clean verify
 ```
 
 ```sh
-java -cp 'target/classes:target/dependency/*' ru.homework.Server 1099 1100
+java -jar rate-provider/target/rate-provider-1.0.0.jar --server.port=8081
 ```
 
 ```sh
-
-java -cp 'target/classes:target/dependency/*' ru.homework.Server 2099 2100
+java -jar rate-provider/target/rate-provider-1.0.0.jar --server.port=8082
 ```
 
 ```sh
-java -cp 'target/classes:target/dependency/*' ru.homework.Client
+java -jar rate-printer/target/rate-printer-1.0.0.jar
+```
+
+```sh
+curl -s http://localhost:8081/rpc -H 'Content-Type: application/json' -d '{"jsonrpc":"2.0","method":"getRate","id":1}'
+```
+
+```sh
+open http://localhost:9292
+```
+
+```sh
+mvn -pl rate-printer clean verify
+mvn -pl rate-provider clean verify
+```
+
+```sh
+docker compose stop
 ```

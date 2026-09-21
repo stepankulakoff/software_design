@@ -1,0 +1,51 @@
+name: currency-homework3
+
+services:
+  zookeeper:
+    image: zookeeper:3.9.5
+    ports:
+      - "127.0.0.1:22181:2181"
+    healthcheck:
+      test: ["CMD", "zkServer.sh", "status"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: pact
+      POSTGRES_USER: pact
+      POSTGRES_PASSWORD: pact-local
+    volumes:
+      - pact-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pact -d pact"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  pact-broker:
+    image: pactfoundation/pact-broker:3.0.0-pactbroker2.121.2
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:9292:9292"
+    environment:
+      PACT_BROKER_DATABASE_ADAPTER: postgres
+      PACT_BROKER_DATABASE_HOST: postgres
+      PACT_BROKER_DATABASE_NAME: pact
+      PACT_BROKER_DATABASE_USERNAME: pact
+      PACT_BROKER_DATABASE_PASSWORD: pact-local
+      PACT_BROKER_PORT: "9292"
+      PACT_BROKER_BASE_URL: http://localhost:9292
+      PACT_DO_NOT_TRACK: "true"
+    healthcheck:
+      test: ["CMD", "ruby", "-rnet/http", "-e", "exit(Net::HTTP.get_response(URI('http://localhost:9292/diagnostic/status/heartbeat')).is_a?(Net::HTTPSuccess) ? 0 : 1)"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+volumes:
+  pact-data:

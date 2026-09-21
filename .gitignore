@@ -1,5 +1,7 @@
-target/
-bin/
+**/target/
+**/bin/
 *.class
 .DS_Store
 .vscode/
+.idea/
+*.iml
